@@ -1,11 +1,13 @@
+local rime = require "rime_toggle"
+
 vim.api.nvim_create_user_command("RimeToggle", function()
-  require("rime_toggle").toggle()
+  rime.toggle()
 end, { desc = "Toggle Rime auto ASCII mode" })
 
 vim.api.nvim_create_user_command("RimeEnable", function()
-  require("rime_toggle").enable()
+  rime.enable()
 end, { desc = "Enable Rime auto ASCII mode" })
 
 vim.api.nvim_create_user_command("RimeDisalbe", function()
-  require("rime_toggle").disable()
+  rime.disable()
 end, { desc = "Disalbe Rime auto ASCII mode" })
