@@ -160,8 +160,8 @@ rt.setup = function(opts)
       if not enabled then
         return
       end
-      local last_ascii = dbus_fn.get_state()
-      if not last_ascii then
+      last_state_ascii = dbus_fn.get_state()
+      if not last_state_ascii then
         dbus_fn.set_state(true)
       end
     end,
@@ -174,8 +174,7 @@ rt.setup = function(opts)
       if not enabled then
         return
       end
-      local cur = dbus_fn.get_state()
-      if cur ~= last_state_ascii then
+      if not last_state_ascii then
         dbus_fn.set_state(last_state_ascii)
       end
     end,
