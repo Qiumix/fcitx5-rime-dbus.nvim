@@ -170,7 +170,7 @@ rt.setup = function(opts)
         return
       end
       local cur = dbus_fn.get_state()
-      if not cur == last_state_ascii then
+      if cur ~= last_state_ascii then
         dbus_fn.set_state(last_state_ascii)
       end
     end,
