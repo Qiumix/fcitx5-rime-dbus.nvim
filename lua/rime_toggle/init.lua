@@ -155,6 +155,7 @@ rt.setup = function(opts)
       if not enabled then
         return
       end
+      last_state_ascii = dbus_fn.get_state()
       dbus_fn.set_state(true)
     end,
     desc = 'Ensure physical ASCII mode on leave',
