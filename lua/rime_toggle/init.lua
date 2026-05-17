@@ -156,7 +156,9 @@ rt.setup = function(opts)
         return
       end
       last_state_ascii = dbus_fn.get_state()
-      dbus_fn.set_state(true)
+      if not last_state_ascii then
+        dbus_fn.set_state(true)
+      end
     end,
     desc = "Ensure physical ASCII mode on leave",
   })
@@ -167,7 +169,10 @@ rt.setup = function(opts)
       if not enabled then
         return
       end
-      dbus_fn.set_state(last_state_ascii)
+      local cur = dbus_fn.get_state()
+      if not cur == last_state_ascii then
+        dbus_fn.set_state(last_state_ascii)
+      end
     end,
     desc = "Restore previous Rime input state",
   })
