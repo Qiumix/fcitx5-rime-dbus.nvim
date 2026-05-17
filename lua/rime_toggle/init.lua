@@ -114,31 +114,9 @@ rt.toggle = function()
   enabled = not enabled
 end
 
-local function force_ascii()
+rt.force_ascii = function()
   last_state_ascii = true
   dbus_fn.set_state(true)
-end
-
-rt.smart_esc = function()
-  if not enabled then
-    return
-  end
-
-  local uv = vim.uv or vim.loop
-  local current_mode = api.nvim_get_mode().mode
-
-  if current_mode == "i" then
-    last_state_ascii = dbus_fn.get_state()
-    last_esc_time = uv.hrtime()
-  elseif current_mode == "n" then
-    local current_time = uv.hrtime()
-    local elapsed = current_time - last_esc_time
-    last_esc_time = current_time
-
-    if elapsed < DOUBLE_CLICK_THRESHOLD then
-      force_ascii()
-    end
-  end
 end
 
 rt.setup = function(opts)
