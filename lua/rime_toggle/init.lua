@@ -1,90 +1,175 @@
-local M = {}
 local api = vim.api
 
-local core = require("rime_toggle.core")
+local rt = {}
 
--- Plugin enabled state
 local enabled = true
-local smart_esc = true
-local setuped = false
-local augroup_name = "RimeAutoMode"
+local os_type = nil
+local dbus_fn = {}
 
-local function smart_esc_fun()
-  core.exec_by_rime_state(function(is_ascii)
-    if not is_ascii then core.forcely_set_ascii() end
-  end)
+local last_state_ascii = true
+local augroup_name = 'RimeAutoMode'
+local group = api.nvim_create_augroup(augroup_name, { clear = true })
 
-  -- Return the actual Esc key to trigger original behavior
-  -- Use nvim_replace_termcodes to handle the key properly
-  return api.nvim_replace_termcodes("<Esc>", true, true, true)
+local last_esc_time = 0
+local DOUBLE_CLICK_THRESHOLD = 250 * 1000000 -- 250ms
+
+local function init_exec()
+  if os_type == 'linux' then
+    if vim.fn.executable 'busctl' ~= 1 then
+      vim.notify('Rime-DBus: busctl command not found', vim.log.levels.ERROR)
+      return false
+    end
+
+    dbus_fn.get_state = function()
+      local out = vim.fn.system {
+        'busctl',
+        '--user',
+        'call',
+        'org.fcitx.Fcitx5',
+        '/rime',
+        'org.fcitx.Fcitx.Rime1',
+        'IsAsciiMode',
+      }
+      return out:find 'true' ~= nil
+    end
+
+    dbus_fn.set_state = function(state)
+      local state_str = state and 'true' or 'false'
+      vim.fn.system {
+        'busctl',
+        '--user',
+        'call',
+        'org.fcitx.Fcitx5',
+        '/rime',
+        'org.fcitx.Fcitx.Rime1',
+        'SetAsciiMode',
+        'b',
+        state_str,
+      }
+    end
+  elseif os_type == 'bsd' then
+    if vim.fn.executable 'dbus-send' ~= 1 then
+      vim.notify('Rime-DBus: dbus-send command not found', vim.log.levels.ERROR)
+      return false
+    end
+
+    dbus_fn.get_state = function()
+      local out = vim.fn.system {
+        'dbus-send',
+        '--session',
+        '--dest=org.fcitx.Fcitx5',
+        '--print-reply',
+        '/rime',
+        'org.fcitx.Fcitx.Rime1.IsAsciiMode',
+      }
+      return out:find 'true' ~= nil
+    end
+
+    dbus_fn.set_state = function(state)
+      local state_str = state and 'true' or 'false'
+      vim.fn.system {
+        'dbus-send',
+        '--session',
+        '--dest=org.fcitx.Fcitx5',
+        '/rime',
+        'org.fcitx.Fcitx.Rime1.SetAsciiMode',
+        'boolean:' .. state_str,
+      }
+    end
+  end
+
+  return true
 end
 
-M.enable = function()
-  if vim.fn.executable("busctl") == 0 then
-    vim.notify("Rime-Toggle: busctl not found", vim.log.levels.WARN)
+local function init_os()
+  local judged = false
+  local result = false
+  return function()
+    if judged then
+      return result
+    end
+    judged = true
+    if vim.fn.has 'linux' == 1 then
+      os_type = 'linux'
+      result = init_exec()
+    elseif vim.fn.has 'bsd' == 1 or vim.fn.has 'mac' == 1 then
+      os_type = 'bsd'
+      result = init_exec()
+    else
+      result = false
+    end
+    return result
+  end
+end
+
+local check_os_and_cmd = init_os()
+
+rt.enable = function()
+  enabled = true
+end
+rt.disable = function()
+  enabled = false
+end
+rt.toggle = function()
+  enabled = not enabled
+end
+
+local function force_ascii()
+  last_state_ascii = true
+  dbus_fn.set_state(true)
+end
+
+rt.smart_esc = function()
+  if not enabled then
     return
   end
 
-  if enabled and not setuped then
-    setuped = true
-  elseif enabled then
-    return -- Already enabled
+  local uv = vim.uv or vim.loop
+  local current_time = uv.hrtime()
+  local elapsed = current_time - last_esc_time
+  last_esc_time = current_time
+
+  if elapsed < DOUBLE_CLICK_THRESHOLD then
+    force_ascii()
+  else
+    last_state_ascii = dbus_fn.get_state()
+  end
+end
+
+rt.setup = function(opts)
+  if not check_os_and_cmd() then
+    enabled = false
+    return
   end
 
-  enabled = true
-
-  local group = api.nvim_create_augroup(augroup_name, { clear = true })
-
-  if smart_esc then
-    vim.keymap.set({ "n", "v" }, "<Esc>", smart_esc_fun, {
-      silent = true,
-      expr = true,
-      desc = "Force Rime ASCII and then Esc"
-    })
+  opts = opts or {}
+  if opts.enabled ~= nil then
+    enabled = opts.enabled
   end
 
-  api.nvim_create_autocmd("InsertLeave", {
+  api.nvim_clear_autocmds { group = group }
+
+  api.nvim_create_autocmd('InsertLeave', {
     group = group,
-    callback = core.save_and_set_ascii,
-    desc = "Save Rime state and switch to ASCII mode",
+    callback = function()
+      if not enabled then
+        return
+      end
+      dbus_fn.set_state(true)
+    end,
+    desc = 'Ensure physical ASCII mode on leave',
   })
 
-  api.nvim_create_autocmd("InsertEnter", {
+  api.nvim_create_autocmd('InsertEnter', {
     group = group,
-    callback = core.restore_state,
-    desc = "Restore previous Rime input state",
+    callback = function()
+      if not enabled then
+        return
+      end
+      dbus_fn.set_state(last_state_ascii)
+    end,
+    desc = 'Restore previous Rime input state',
   })
 end
 
-M.disable = function()
-  if not enabled then
-    return -- Already disabled
-  end
-
-  enabled = false
-  if smart_esc then
-    pcall(vim.keymap.del, { "n", "v" }, "<Esc>")
-  end
-
-  pcall(api.nvim_del_augroup_by_name, augroup_name)
-end
-
-M.toggle = function()
-  M[enabled and "disable" or "enable"]()
-end
-
-M.setup = function(opts)
-  if opts then
-    if opts.enabled ~= nil then
-      enabled = opts.enabled
-    end
-    if opts.smart_esc ~= nil then
-      smart_esc = opts.smart_esc
-    end
-  end
-  if enabled then
-    M.enable()
-  end
-end
-
-return M
+return rt
