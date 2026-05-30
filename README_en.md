@@ -27,12 +27,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
   event = "InsertEnter",
   -- Default options
   -- enabled for enabling when enter nvim
-  -- After enabling smart_esc，hit Esc in normal and visual mode
-  -- will forcely set ASCII mode, and then exec event previously
-  -- binded to Esc.
   -- opts = {
   --   enabled = true,
-  --   smart_esc = true
   -- }
 }
 ```
@@ -46,30 +42,34 @@ vim.pack.add({
 
 require('rime_dbus').setup({
   -- enabled = true,
-  -- smart_esc = true
 })
 ```
 
 ## command
+
 - RimeEnable
 - RimeDisablea
 - RimeToggle
 
 ## Suggestions
+
 In `~/.config/fcitx5/conf/rime.conf`
 
 ```conf
 # This will disable sharing im state between multi windows
-InputState=No 
+InputState=No
 ```
+
 ## How It Works
 
 When you leave Insert mode, the plugin:
+
 1. Queries the current Rime input state via D-Bus
 2. Saves the state internally
 3. Switches Rime to ASCII mode if it was in Chinese mode
 
 When you enter Insert mode again, the plugin:
+
 1. Queries the current state
 2. Restores the previously saved state if different
 

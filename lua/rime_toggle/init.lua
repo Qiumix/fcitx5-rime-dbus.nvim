@@ -89,7 +89,7 @@ local function init_os()
       return result
     end
     judged = true
-    if vim.fn.has "linux" == 1 then
+    if vim.fn.has "linux" == 1 and not vim.fn.has "android" then
       os_type = "linux"
       result = init_exec()
     elseif vim.fn.has "bsd" == 1 or vim.fn.has "mac" == 1 then

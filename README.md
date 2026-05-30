@@ -27,11 +27,8 @@
   event = "InsertEnter",
   -- 以下是默认值
   -- enabled表示默认启用
-  -- smart_esc启用后，按Esc会在normal和visual模式下
-  -- 先强制转ASCII模式再发送Esc按键事件
   -- opts = {
   --   enabled = true,
-  --   smart_esc = true
   -- }
 }
 ```
@@ -45,30 +42,34 @@ vim.pack.add({
 
 require('rime_dbus').setup({
   -- enabled = true,
-  -- smart_esc = true
 })
 ```
 
 ## 命令
+
 - RimeEnable: 启用
 - RimeDisablea: 禁用
 - RimeToggle: 切换
 
 ## 建议
+
 在配置文件 `~/.config/fcitx5/conf/rime.conf` 里添加下面这个选项
 
 ```conf
 # 禁用多窗口rime状态共享
-InputState=No 
+InputState=No
 ```
+
 ## 工作原理
 
 当离开插入模式时，插件会：
+
 1. 通过 D-Bus 查询当前 Rime 输入状态
 2. 在内部保存该状态
 3. 如果当前是中文模式，则切换到 ASCII 模式
 
 当再次进入插入模式时，插件会：
+
 1. 查询当前状态
 2. 如果与之前保存的状态不同，则恢复之前的状态
 
