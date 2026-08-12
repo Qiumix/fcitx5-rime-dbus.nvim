@@ -37,10 +37,10 @@
 
 ```lua
 vim.pack.add({
-  { src = "https://github.com/Qiumix/rime-toggle.nvim") },
+  { src = "https://github.com/Qiumix/rime-toggle.nvim" },
 })
 
-require('rime_dbus').setup({
+require('rime_toogle').setup({
   -- enabled = true,
 })
 ```
@@ -48,7 +48,7 @@ require('rime_dbus').setup({
 ## 命令
 
 - RimeEnable: 启用
-- RimeDisablea: 禁用
+- RimeDisable: 禁用
 - RimeToggle: 切换
 
 ## 建议
